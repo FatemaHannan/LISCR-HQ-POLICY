@@ -1,0 +1,47 @@
+name: Process New Documents
+
+on:
+  push:
+    paths:
+      - 'documents/**'
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.DEPLOY_TOKEN }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install python-docx
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Process documents
+        run: |
+          python3 scripts/extract_docs.py
+
+      - name: Build and deploy
+        run: |
+          cd liscr-app
+          npm install
+          npm run deploy
+        env:
+          GH_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+
+      - name: Commit updated docContent.js
+        run: |
+          git config user.email "action@github.com"
+          git config user.name "GitHub Action"
+          git add liscr-app/src/docContent.js
+          git commit -m "Auto-update documents" || echo "No changes"
+          git push
